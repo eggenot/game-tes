@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixel Snake</title>
+
+<style>
+*{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+    user-select:none;
+    -webkit-user-select:none;
+    touch-action:manipulation;
+}
+
+body{
+    background:#111;
+    font-family:monospace;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    color:#fff;
+    image-rendering:pixelated;
+    padding:12px;
+}
+
+h1{
+    font-size:22px;
+    margin-bottom:10px;
+    color:#5cff72;
+    text-shadow:2px 2px #000;
+}
+
+#score{
+    margin-bottom:10px;
+    font-size:18px;
+}
+
+canvas{
+    background:#1d1d1d;
+    border:4px solid #5cff72;
+    image-rendering:pixelated;
+    width:min(90vw,420px);
+    height:min(90vw,420px);
+}
+
+.controls{
+    margin-top:18px;
+    display:grid;
+    grid-template-columns:70px 70px 70px;
+    gap:8px;
+}
+
+.btn{
+    background:#2d2d2d;
+    border:3px solid #5cff72;
+    color:white;
+    font-size:28px;
+    height:70px;
+    border-radius:10px;
+    cursor:pointer;
+}
+
+.btn:active{
+    background:#5cff72;
+    color:black;
+}
+
+.spacer{
+    visibility:hidden;
+}
+</style>
+</head>
+
+<body>
+
+<h1>PIXEL SNAKE</h1>
+<div id="score">Score: 0</div>
+
+<canvas id="game" width="400" height="400"></canvas>
+
+<div class="controls">
+    <div class="spacer"></div>
+    <button class="btn" data-dir="up">⬆</button>
+    <div class="spacer"></div>
+
+    <button class="btn" data-dir="left">⬅</button>
+    <button class="btn" data-dir="down">⬇</button>
+    <button class="btn" data-dir="right">➡</button>
+</div>
+
+<script>
+(() => {
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const scoreText = document.getElementById("score");
+
+const tile = 20;
+const size = 20;
+
+let snake = [
+    {x:10,y:10}
+];
+
+let dir = {x:1,y:0};
+let nextDir = {x:1,y:0};
+
+let food = randomFood();
+let score = 0;
+let running = true;
+
+function randomFood(){
+    let pos;
+
+    do{
+        pos = {
+            x: Math.floor(Math.random()*size),
+            y: Math.floor(Math.random()*size)
+        };
+    } while(
+        snake.some(s => s.x===pos.x && s.y===pos.y)
+    );
+
+    return pos;
+}
+
+function drawPixel(x,y,color){
+    ctx.fillStyle = color;
+    ctx.fillRect(x*tile,y*tile,tile,tile);
+
+    ctx.fillStyle="rgba(255,255,255,.08)";
+    ctx.fillRect(x*tile,y*tile,tile-3,tile-3);
+}
+
+function draw(){
+    ctx.fillStyle="#1d1d1d";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    // food
+    drawPixel(food.x,food.y,"#ff5c5c");
+
+    // snake
+    snake.forEach((part,i)=>{
+        drawPixel(
+            part.x,
+            part.y,
+            i===0 ? "#7fff00" : "#44cc44"
+        );
+    });
+}
+
+function update(){
+
+    if(!running) return;
+
+    dir = nextDir;
+
+    const head = {
+        x: snake[0].x + dir.x,
+        y: snake[0].y + dir.y
+    };
+
+    // wall wrap
+    if(head.x<0) head.x=size-1;
+    if(head.x>=size) head.x=0;
+    if(head.y<0) head.y=size-1;
+    if(head.y>=size) head.y=0;
+
+    // collision
+    if(snake.some(p => p.x===head.x && p.y===head.y)){
+        running=false;
+        setTimeout(()=>{
+            alert("Game Over! Score: " + score);
+            reset();
+        },50);
+        return;
+    }
+
+    snake.unshift(head);
+
+    if(head.x===food.x && head.y===food.y){
+        score++;
+        scoreText.textContent="Score: " + score;
+        food=randomFood();
+    } else {
+        snake.pop();
+    }
+
+    draw();
+}
+
+function reset(){
+    snake=[{x:10,y:10}];
+    dir={x:1,y:0};
+    nextDir={x:1,y:0};
+    food=randomFood();
+    score=0;
+    scoreText.textContent="Score: 0";
+    running=true;
+    draw();
+}
+
+function setDirection(d){
+
+    const map = {
+        up:{x:0,y:-1},
+        down:{x:0,y:1},
+        left:{x:-1,y:0},
+        right:{x:1,y:0}
+    };
+
+    const nd = map[d];
+    if(!nd) return;
+
+    // anti reverse
+    if(
+        nd.x === -dir.x &&
+        nd.y === -dir.y
+    ) return;
+
+    nextDir = nd;
+}
+
+document.addEventListener("keydown",(e)=>{
+    const k=e.key;
+
+    if(k==="ArrowUp") setDirection("up");
+    if(k==="ArrowDown") setDirection("down");
+    if(k==="ArrowLeft") setDirection("left");
+    if(k==="ArrowRight") setDirection("right");
+});
+
+document.querySelectorAll(".btn").forEach(btn=>{
+    btn.addEventListener("touchstart",(e)=>{
+        e.preventDefault();
+        setDirection(btn.dataset.dir);
+    });
+
+    btn.addEventListener("click",()=>{
+        setDirection(btn.dataset.dir);
+    });
+});
+
+draw();
+setInterval(update,120);
+
+})();
+</script>
+
+</body>
+</html>
